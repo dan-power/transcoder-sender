@@ -21,8 +21,8 @@ open.then(function(conn) {
 
   return conn.createChannel();
 }).then(function(ch) {
-  return ch.assertQueue(q).then(function(ok) {
-    top.forEach(function(path) {
+  return ch.assertQueue(q).then(function(err, ok) {
+    return top.forEach(function(path) {
       _getAllFilesFromFolder(path).forEach(function (file) {
         console.log('[+] pushing %s to rabbitmq', file);
         ch.sendToQueue(q, new Buffer(file));

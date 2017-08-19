@@ -1,42 +1,44 @@
-/*
-
-This is a simple script to automate transcoding of various files to a fixed format.
-
-NOT PRODUCTION READY
-
-*/
-
 var amqp = require('amqplib');
 var filesystem = require("fs");
+var RabbitMQ = require('rabbitmq-node');
+var rabbitmq = new RabbitMQ('amqp://'+process.env.RABBITMQ);
 
 var q = 'transcode_these';
+var top = [];
 var options = process.env.HANDBRAKE_OPTS;
 
-require('amqplib').connect('amqp://'+process.env.RABBITMQ, function(err, conn) {
-  if (err != null) bail(err);
-
-  conn.createChannel(on_open);
+rabbitmq.on('error', function(err) {
+  console.error(err);
+});
+rabbitmq.on('logs', function(print_log) {
+  console.info(print_log);
 });
 
-function bail(err) {
-  console.error(err);
-  process.exit(1);
-}
+// to speed this up a bit, get the first level only first.
+// this way we can push to the queue while the rest of the files are being searched.
+filesystem.readdirSync(process.env.WATCH_PATH).forEach(function(dir) {
+  console.log('[x] preparing top level directories.', file);
 
-function on_open(err, ch) {
-  if (err != null) bail(err);
-  ch.assertQueue(q);
+  var stat = filesystem.statSync(process.env.WATCH_PATH+'/'+dir);
 
-  _getAllFilesFromFolder(process.env.WATCH_PATH).forEach(function (file) {
-    ch.sendToQueue(q, new Buffer({
+  if (stat && stat.isDirectory()) {
+    top.push(process.env.WATCH_PATH+'/'+dir);
+  }
+});
+
+top.forEach(function(path) {
+  _getAllFilesFromFolder(path).forEach(function (file) {
+    console.log('[+] pushing %s to rabbitmq', file);
+    rabbitmq.publish(q, {
       filename: file,
       options: options
-    }));
+    });
   });
-}
+});
 
 function _getAllFilesFromFolder(dir) {
     var results = [];
+
     filesystem.readdirSync(dir).forEach(function(file) {
         file = dir+'/'+file;
         var stat = filesystem.statSync(file);

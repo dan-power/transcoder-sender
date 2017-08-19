@@ -15,4 +15,4 @@ RUN git clone https://github.com/dan-power/transcoder-sender.git /var/transcoder
     cd /var/transcoder-sender && \
     npm install
 
-CMD ["node", "/var/transcoder-sender/sender-promise.js"]
+CMD ["node", "/var/transcoder-sender/sender.js"]
