@@ -1,11 +1,11 @@
-var amqp = require('amqplib');
-var filesystem = require("fs");
-var RabbitMQ = require('rabbitmq-node');
-var rabbitmq = new RabbitMQ('amqp://'+process.env.RABBITMQ);
+const filesystem = require("fs");
+const RabbitMQ = require('rabbitmq-node');
+const rabbitmq = new RabbitMQ('amqp://'+process.env.RABBITMQ);
 
-var q = 'transcode_these';
+const q = 'transcode_these';
 var top = [];
 var options = process.env.HANDBRAKE_OPTS;
+const watchPath = process.env.WATCH_PATH;
 
 rabbitmq.on('error', function(err) {
   console.error(err);
@@ -16,13 +16,13 @@ rabbitmq.on('logs', function(print_log) {
 
 // to speed this up a bit, get the first level only first.
 // this way we can push to the queue while the rest of the files are being searched.
-filesystem.readdirSync(process.env.WATCH_PATH).forEach(function(dir) {
-  console.log('[x] preparing top level directories.', file);
+filesystem.readdirSync(watchPath).forEach(function(dir) {
+  console.log('[x] preparing top level directories.');
 
-  var stat = filesystem.statSync(process.env.WATCH_PATH+'/'+dir);
+  var stat = filesystem.statSync(watchPath+'/'+dir);
 
   if (stat && stat.isDirectory()) {
-    top.push(process.env.WATCH_PATH+'/'+dir);
+    top.push(watchPath+'/'+dir);
   }
 });
 
