@@ -4,7 +4,7 @@ MAINTAINER Dan Power
 ENV RABBITMQ=rabbitmq
 ENV WATCH_PATH="/mnt/media"
 ENV TRANSCODE_FROM="avi"
-ENV HANDBRAKE_OPTS="{e:'x264',q:22,r:25,B:64,X:480,O:''}"
+ENV HANDBRAKE_OPTS="{encoder:'x264',quality:22,rate:25,ab:64,maxWidth:480,optimize:true}"
 
 LABEL project="au.id.danpower.transcoder"
 LABEL version=1.0
