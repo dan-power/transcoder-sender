@@ -9,6 +9,8 @@ ENV HANDBRAKE_OPTS="{e:'x264',q:22,r:25,B:64,X:480,O:''}"
 LABEL project="au.id.danpower.transcoder"
 LABEL version=1.0
 
+VOLUME $WATCH_PATH
+
 RUN git clone https://github.com/dan-power/transcoder-sender.git /var/transcoder-sender
 WORKDIR /var/transcoder-sender
 RUN npm install

@@ -1,39 +1,49 @@
-#!/usr/bin/env node
-var amqp = require('amqplib'),
-    WatchIO = require('watch.io'),
-    watcher = new WatchIO()
-;
+/*
 
-const FILE_PATH = process.env.WATCH_PATH;
+This is a simple script to automate transcoding of various files to a fixed format.
+
+NOT PRODUCTION READY
+
+*/
+
+#!/usr/bin/env node
+var amqp = require('amqplib');
+var filesystem = require("fs");
+
 var q = 'transcode_these';
 var open = require('amqplib').connect('amqp://'+process.env.RABBITMQ);
-
 var options = process.env.HANDBRAKE_OPTS;
 
-watcher.watch(FILE_PATH);
+var _getAllFilesFromFolder = function(dir) {
+    var results = [];
+    filesystem.readdirSync(dir).forEach(function(file) {
+        file = dir+'/'+file;
+        var stat = filesystem.statSync(file);
 
-function pushToQueue( file, stat ) {
-  if (file.match(new RegExp(process.env.TRANSCODE_FROM))) {
-    console.log('create: '+file);
-    open.then(function(conn) {
-      return conn.createChannel();
-    }).then(function(ch) {
-      return ch.assertQueue(q).then(function(ok) {
-        return ch.sendToQueue(q, new Buffer({
-          filename: file,
-          options: options
-        }));
-      });
-    }).catch(console.warn);
-  }
-}
+        if (stat && stat.isDirectory()) {
+            results = results.concat(_getAllFilesFromFolder(file))
+        } else  {
+          // make sure this is one of the files we want to transcode.
+          if(file.match(new RegExp(process.env.TRANSCODE_FROM+'$'))) {
+            results.push(file);
+          }
+        }
+    });
 
-watcher.on('create', pushToQueue);
-watcher.on('refresh', pushToQueue);
+    return results;
+};
 
-watcher.on('error', function ( err, file ) {
-  console.log('Oops! Error: '+ err + ' on file: ' + file);
+_getAllFilesFromFolder(process.env.WATCH_PATH).forEach(function (file) {
+  const mtime_ms = +file.mtime_ms;
 
-  watcher.close(FILE_PATH);
-  watcher.removeAllListeners();
+  open.then(function(conn) {
+    return conn.createChannel();
+  }).then(function(ch) {
+    return ch.assertQueue(q).then(function(ok) {
+      return ch.sendToQueue(q, new Buffer({
+        filename: file,
+        options: options
+      }));
+    });
+  }).catch(console.warn);
 });

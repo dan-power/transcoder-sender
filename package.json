@@ -9,7 +9,6 @@
   "author": "Dan Power",
   "license": "ISC",
   "dependencies": {
-    "amqplib": "^0.5.1",
-    "watch.io": "^1.0.7"
+    "amqplib": "^0.5.1"
   }
 }
