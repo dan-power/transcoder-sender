@@ -1,8 +1,20 @@
 var filesystem = require("fs");
+var path = require("path");
 var open = require('amqplib').connect('amqp://'+process.env.RABBITMQ);
 
 var q = 'transcode_these';
+var top = [];
 var options = process.env.HANDBRAKE_OPTS;
+
+// to speed this up a bit, get the first level only first.
+// this way we can push to the queue while the rest of the files are being searched.
+filesystem.readdirSync(process.env.WATCH_PATH).forEach(function(dir) {
+  var stat = filesystem.statSync(process.env.WATCH_PATH+'/'+dir);
+
+  if (stat && stat.isDirectory()) {
+    top.push(process.env.WATCH_PATH+'/'+dir);
+  }
+});
 
 open.then(function(conn) {
   console.log('[-] connected, creating channel');
@@ -10,23 +22,18 @@ open.then(function(conn) {
   return conn.createChannel();
 }).then(function(ch) {
   return ch.assertQueue(q).then(function(ok) {
-    console.log('[-] queue asserted');
-
-    _getAllFilesFromFolder(process.env.WATCH_PATH).forEach(function (file) {
-      console.log('[+] pushing %s to rabbitmq', file);
-
-      ch.sendToQueue(q, new Buffer({
-        filename: file,
-        options: options
-      }));
+    top.forEach(function(path) {
+      _getAllFilesFromFolder(path).forEach(function (file) {
+        console.log('[+] pushing %s to rabbitmq', file);
+        ch.sendToQueue(q, new Buffer(file));
+      });
     });
-
-    // return ch.sendToQueue(q, new Buffer('something to do'));
   });
 }).catch(console.warn);
 
 function _getAllFilesFromFolder(dir) {
     var results = [];
+
     filesystem.readdirSync(dir).forEach(function(file) {
         file = dir+'/'+file;
         var stat = filesystem.statSync(file);
@@ -34,8 +41,6 @@ function _getAllFilesFromFolder(dir) {
         if (stat && stat.isDirectory()) {
             results = results.concat(_getAllFilesFromFolder(file))
         } else  {
-          console.log('[?] is %s an avi?', file);
-
           // make sure this is one of the files we want to transcode.
           if(file.match(new RegExp(process.env.TRANSCODE_FROM+'$'))) {
             results.push(file);
