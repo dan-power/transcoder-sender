@@ -10,10 +10,32 @@ var amqp = require('amqplib');
 var filesystem = require("fs");
 
 var q = 'transcode_these';
-var open = require('amqplib').connect('amqp://'+process.env.RABBITMQ);
 var options = process.env.HANDBRAKE_OPTS;
 
-var _getAllFilesFromFolder = function(dir) {
+require('amqplib').connect('amqp://'+process.env.RABBITMQ, function(err, conn) {
+  if (err != null) bail(err);
+
+  conn.createChannel(on_open);
+});
+
+function bail(err) {
+  console.error(err);
+  process.exit(1);
+}
+
+function on_open(err, ch) {
+  if (err != null) bail(err);
+  ch.assertQueue(q);
+
+  _getAllFilesFromFolder(process.env.WATCH_PATH).forEach(function (file) {
+    ch.sendToQueue(q, new Buffer({
+      filename: file,
+      options: options
+    }));
+  });
+}
+
+function _getAllFilesFromFolder(dir) {
     var results = [];
     filesystem.readdirSync(dir).forEach(function(file) {
         file = dir+'/'+file;
@@ -31,18 +53,3 @@ var _getAllFilesFromFolder = function(dir) {
 
     return results;
 };
-
-_getAllFilesFromFolder(process.env.WATCH_PATH).forEach(function (file) {
-  const mtime_ms = +file.mtime_ms;
-
-  open.then(function(conn) {
-    return conn.createChannel();
-  }).then(function(ch) {
-    return ch.assertQueue(q).then(function(ok) {
-      return ch.sendToQueue(q, new Buffer({
-        filename: file,
-        options: options
-      }));
-    });
-  }).catch(console.warn);
-});
