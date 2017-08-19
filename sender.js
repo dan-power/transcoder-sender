@@ -1,21 +1,16 @@
 #!/usr/bin/env node
+// Post a new task to the work queue
 
 var amqp = require('amqplib');
 
-amqp.connect('amqp://rabbitmq').then(function(conn) {
+amqp.connect('amqp://'+process.env.RABBITMQ).then(function(conn) {
   return conn.createChannel().then(function(ch) {
-    var q = 'hello';
-    var msg = 'Hello World!';
+    var q = 'task_queue';
+    var ok = ch.assertQueue(q, {durable: true});
 
-    var ok = ch.assertQueue(q, {durable: false});
-
-    return ok.then(function(_qok) {
-      // NB: `sentToQueue` and `publish` both return a boolean
-      // indicating whether it's OK to send again straight away, or
-      // (when `false`) that you should wait for the event `'drain'`
-      // to fire before writing again. We're just doing the one write,
-      // so we'll ignore it.
-      ch.sendToQueue(q, Buffer.from(msg));
+    return ok.then(function() {
+      var msg = process.argv.slice(2).join(' ') || "Hello World!";
+      ch.sendToQueue(q, Buffer.from(msg), {deliveryMode: true});
       console.log(" [x] Sent '%s'", msg);
       return ch.close();
     });
