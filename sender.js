@@ -6,7 +6,6 @@ NOT PRODUCTION READY
 
 */
 
-#!/usr/bin/env node
 var amqp = require('amqplib');
 var filesystem = require("fs");
 
