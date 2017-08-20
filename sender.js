@@ -29,10 +29,7 @@ filesystem.readdirSync(watchPath).forEach(function(dir) {
 top.forEach(function(path) {
   _getAllFilesFromFolder(path).forEach(function (file) {
     console.log('[+] pushing %s to rabbitmq', file);
-    rabbitmq.publish(q, {
-      filename: file,
-      options: options
-    });
+    rabbitmq.publish(q, { message: file });
   });
 });
 
