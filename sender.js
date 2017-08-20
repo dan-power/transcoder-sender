@@ -1,18 +1,11 @@
 const filesystem = require("fs");
-const RabbitMQ = require('rabbitmq-node');
-const rabbitmq = new RabbitMQ('amqp://'+process.env.RABBITMQ);
+var Tortoise = require('tortoise')
+  , tortoise = new Tortoise('amqp://'+process.env.RABBITMQ);
 
 const q = 'transcode_these';
 var top = [];
 var options = process.env.HANDBRAKE_OPTS;
 const watchPath = process.env.WATCH_PATH;
-
-rabbitmq.on('error', function(err) {
-  console.error(err);
-});
-rabbitmq.on('logs', function(print_log) {
-  console.info(print_log);
-});
 
 // to speed this up a bit, get the first level only first.
 // this way we can push to the queue while the rest of the files are being searched.
@@ -29,7 +22,7 @@ filesystem.readdirSync(watchPath).forEach(function(dir) {
 top.forEach(function(path) {
   _getAllFilesFromFolder(path).forEach(function (file) {
     console.log('[+] pushing %s to rabbitmq', file);
-    rabbitmq.publish(q, { message: file });
+    tortoise.queue(q).publish({ file: file, options: options });
   });
 });
 
